@@ -8,7 +8,9 @@ import Home from "./pages/Home";
 import CategoryPage from "./pages/CategoryPage";
 import ProductDetails from "./pages/ProductDetails";
 import Cart from "./pages/Cart";
-
+import SeedCatalog from "./pages/SeedCatalog";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 function ComingSoon() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-16 text-center">
@@ -30,6 +32,9 @@ export default function App() {
             <Route path="/category/:slug" element={<CategoryPage />} />
             <Route path="/product/:slug" element={<ProductDetails />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/seed-catalog" element={<SeedCatalog />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="*" element={<ComingSoon />} />
           </Routes>
         </BrowserRouter>

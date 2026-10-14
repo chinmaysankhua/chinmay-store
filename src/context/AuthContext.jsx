@@ -23,7 +23,7 @@ function readSavedUser() {
 
 async function firebaseAuthRequest(endpoint, payload) {
   if (!API_KEY) {
-    throw new Error("Firebase API key is missing from your .env file.");
+    throw new Error("Firebase API key is missing. Check your .env file.");
   }
 
   const response = await fetch(
@@ -37,57 +37,81 @@ async function firebaseAuthRequest(endpoint, payload) {
     }
   );
 
-  const data = await response.json();
+  const result = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(
-      data.error?.message || "Authentication request failed."
-    );
+    const errorMessage =
+      result?.error?.message || "Authentication failed.";
+
+    console.error(`Firebase ${endpoint} error:`, errorMessage);
+
+    throw new Error(errorMessage);
   }
 
-  return data;
+  return result;
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readSavedUser);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem("chinmay-store-user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("chinmay-store-user");
+    try {
+      if (user) {
+        localStorage.setItem("chinmay-store-user", JSON.stringify(user));
+      } else {
+        localStorage.removeItem("chinmay-store-user");
+      }
+    } catch (error) {
+      console.error("Unable to save authentication state:", error);
     }
   }, [user]);
 
-  const register = useCallback(async ({ email, password, displayName }) => {
-    const data = await firebaseAuthRequest("signUp", {
-      email,
-      password,
-      returnSecureToken: true,
-    });
+  const register = useCallback(
+    async ({ email, password, displayName }) => {
+      // Step 1: Create the Firebase Authentication account.
+      const data = await firebaseAuthRequest("signUp", {
+        email: email.trim(),
+        password,
+        returnSecureToken: true,
+      });
 
-    const updatedData = await firebaseAuthRequest("update", {
-      idToken: data.idToken,
-      displayName,
-      returnSecureToken: true,
-    });
+      // Step 2: Update the user's display name.
+      let updatedData;
 
-    const newUser = {
-      uid: updatedData.localId,
-      email: updatedData.email,
-      displayName: updatedData.displayName || displayName,
-      idToken: updatedData.idToken,
-      refreshToken: updatedData.refreshToken,
-      expiresIn: updatedData.expiresIn,
-    };
+      try {
+        updatedData = await firebaseAuthRequest("update", {
+          idToken: data.idToken,
+          displayName: displayName.trim(),
+          returnSecureToken: true,
+        });
+      } catch (error) {
+        // The account may already exist even if updating its
+        // display name fails. Do not silently hide the error.
+        console.error(
+          "Account created, but display-name update failed:",
+          error.message
+        );
+        throw error;
+      }
 
-    setUser(newUser);
-    return newUser;
-  }, []);
+      const newUser = {
+        uid: updatedData.localId || data.localId,
+        email: updatedData.email || data.email,
+        displayName: updatedData.displayName || displayName.trim(),
+        idToken: updatedData.idToken || data.idToken,
+        refreshToken: updatedData.refreshToken || data.refreshToken,
+        expiresIn: updatedData.expiresIn || data.expiresIn,
+      };
+
+      setUser(newUser);
+      return newUser;
+    },
+    []
+  );
 
   const login = useCallback(async ({ email, password }) => {
     const data = await firebaseAuthRequest("signInWithPassword", {
-      email,
+      email: email.trim(),
       password,
       returnSecureToken: true,
     });

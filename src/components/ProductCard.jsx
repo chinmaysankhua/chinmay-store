@@ -2,50 +2,51 @@
 import { Link } from "react-router-dom";
 
 export default function ProductCard({ product }) {
-  const isOutOfStock = product.stockQuantity <= 0;
-
   return (
-    <article className="group min-w-0">
-      <Link
-        to={`/product/${product.slug}`}
-        className="block overflow-hidden rounded-xl bg-stone-100"
-      >
-        <div className="relative aspect-[4/5] overflow-hidden">
+    <article className="overflow-hidden rounded-xl border border-gray-200 bg-white transition hover:shadow-md">
+      <Link to={`/product/${product.slug}`}>
+        {product.image ? (
           <img
             src={product.image}
             alt={product.name}
             loading="lazy"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            className="h-56 w-full object-cover"
           />
-
-          {isOutOfStock && (
-            <span className="absolute left-3 top-3 rounded-full bg-stone-900/85 px-3 py-1.5 text-xs font-medium text-white">
-              Out of stock
-            </span>
-          )}
-        </div>
+        ) : (
+          <div className="flex h-56 items-center justify-center bg-[#F2EDE5] text-gray-500">
+            No image available
+          </div>
+        )}
       </Link>
 
-      <div className="pt-3">
-        <Link to={`/product/${product.slug}`}>
-          <h2 className="font-medium leading-6 text-stone-800 transition hover:text-[#263E32]">
-            {product.name}
-          </h2>
+      <div className="p-4">
+        <Link
+          to={`/product/${product.slug}`}
+          className="font-semibold hover:text-[#263E32]"
+        >
+          {product.name}
         </Link>
 
-        <p className="mt-2 font-semibold text-[#263E32]">
-          ₹{product.price.toLocaleString("en-IN")}
+        <p className="mt-3 text-lg font-bold">
+          ₹{Number(product.price).toLocaleString("en-IN")}
         </p>
 
         <p
-          className={`mt-2 text-xs ${
-            isOutOfStock ? "text-red-600" : "text-stone-500"
+          className={`mt-2 text-sm ${
+            product.stockQuantity > 0 ? "text-green-700" : "text-red-600"
           }`}
         >
-          {isOutOfStock
-            ? "Currently unavailable"
-            : `${product.stockQuantity} in stock`}
+          {product.stockQuantity > 0
+            ? "In stock"
+            : "Out of stock"}
         </p>
+
+        <Link
+          to={`/product/${product.slug}`}
+          className="mt-4 block rounded-lg bg-[#263E32] px-4 py-2 text-center font-medium text-white hover:bg-[#1c3026]"
+        >
+          View Product
+        </Link>
       </div>
     </article>
   );

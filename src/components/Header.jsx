@@ -1,74 +1,82 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { selectCartCount } from "../redux/cartSlice";
+import { useAuth } from "../context/AuthContext";
 
 export default function Header() {
-  const [query, setQuery] = useState("");
+  const { user, logout } = useAuth();
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
-  const cartCount = useSelector(selectCartCount);
 
   function handleSearch(event) {
     event.preventDefault();
 
-    const trimmedQuery = query.trim();
+    const query = search.trim();
+    if (!query) return;
 
-    if (!trimmedQuery) return;
-
-    navigate(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+    navigate(`/search?q=${encodeURIComponent(query)}`);
   }
 
   return (
     <header className="border-b border-gray-200 bg-white">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-        <Link to="/" className="text-2xl font-bold text-[#263E32]">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4">
+        {/* Logo */}
+        <Link
+          to="/"
+          className="shrink-0 text-lg font-bold tracking-tight text-[#263E32] sm:text-2xl"
+        >
           Chinmay Store
         </Link>
 
+        {/* Search bar */}
         <form
           onSubmit={handleSearch}
-          className="order-3 flex w-full overflow-hidden rounded-lg border border-gray-300 md:order-none md:w-auto md:flex-1 md:max-w-xl"
+          className="mx-auto flex min-w-0 max-w-xl flex-1 items-center rounded-lg border border-gray-300 bg-[#F2EDE5]/50 px-3"
         >
           <input
             type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search furniture..."
             aria-label="Search furniture"
-            className="min-w-0 flex-1 px-4 py-2 outline-none"
+            className="w-full min-w-0 bg-transparent py-2 text-sm outline-none sm:text-base"
           />
-
           <button
             type="submit"
-            className="bg-[#263E32] px-5 py-2 text-white hover:bg-[#1c3026]"
+            aria-label="Search"
+            className="shrink-0 px-1 text-lg text-[#263E32]"
           >
-            Search
+            🔍
           </button>
         </form>
 
-        <nav className="flex items-center gap-4 text-sm font-medium">
-          <Link to="/login" className="hidden hover:text-[#263E32] sm:block">
-            Login
-          </Link>
-
-          <Link
-            to="/register"
-            className="hidden hover:text-[#263E32] sm:block"
-          >
-            Register
-          </Link>
+        {/* Login and Cart: visible on mobile and desktop */}
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          {user ? (
+            <button
+              onClick={logout}
+              className="text-sm font-medium text-[#263E32] sm:text-base"
+            >
+              Logout
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className="rounded-lg bg-[#263E32] px-3 py-2 text-sm font-medium text-white sm:px-4 sm:text-base"
+            >
+              Login
+            </Link>
+          )}
 
           <Link
             to="/cart"
-            className="flex items-center gap-2 hover:text-[#263E32]"
-            aria-label={`Shopping cart, ${cartCount} items`}
+            aria-label="Shopping cart"
+            className="flex items-center gap-1 text-sm font-medium text-[#263E32] sm:gap-2 sm:text-base"
           >
+            <span aria-hidden="true">🛒</span>
             <span>Cart</span>
-            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#263E32] px-2 text-xs text-white">
-              {cartCount}
-            </span>
           </Link>
-        </nav>
+        </div>
       </div>
     </header>
   );
