@@ -11,6 +11,9 @@ import Cart from "./pages/Cart";
 import SeedCatalog from "./pages/SeedCatalog";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Checkout from "./pages/Checkout";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import OrderHistory from "./pages/OrderHistory";
 function ComingSoon() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-16 text-center">
@@ -35,6 +38,12 @@ export default function App() {
             <Route path="/seed-catalog" element={<SeedCatalog />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route
+              path="/order-confirmation/:orderId"
+              element={<OrderConfirmation />}
+            />
+            <Route path="/orders" element={<OrderHistory />} />
             <Route path="*" element={<ComingSoon />} />
           </Routes>
         </BrowserRouter>

@@ -80,7 +80,7 @@ export default function Cart() {
                               updateQuantity({
                                 productId: item.id,
                                 quantity: item.quantity - 1,
-                              })
+                              }),
                             )
                           }
                           className="px-3 py-2 disabled:opacity-40"
@@ -101,7 +101,7 @@ export default function Cart() {
                               updateQuantity({
                                 productId: item.id,
                                 quantity: item.quantity + 1,
-                              })
+                              }),
                             )
                           }
                           className="px-3 py-2 disabled:opacity-40"
@@ -148,15 +148,12 @@ export default function Cart() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  alert("Checkout will be implemented in the next step.")
-                }
-                className="mt-6 w-full rounded-lg bg-[#263E32] px-6 py-3 font-semibold text-white hover:bg-[#1c3026]"
+              <Link
+                to="/checkout"
+                className="mt-6 block w-full rounded-lg bg-[#263E32] px-6 py-3 text-center font-semibold text-white hover:bg-[#1c3026]"
               >
                 Proceed to Checkout
-              </button>
+              </Link>
 
               <Link
                 to="/"
