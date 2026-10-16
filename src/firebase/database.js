@@ -1,3 +1,4 @@
+import { getFreshIdToken } from "./tokenManager";
 
 const DATABASE_URL = import.meta.env.VITE_FIREBASE_DATABASE_URL;
 
@@ -33,11 +34,12 @@ async function requestDatabase(path, method, body, idToken) {
     .join("/");
 
   const url = new URL(
-    `${DATABASE_URL.replace(/\/+$/, "")}/${cleanPath}.json`
+    `${DATABASE_URL.replace(/\/+$/, "")}/${cleanPath}.json`,
   );
 
   if (idToken) {
-    url.searchParams.set("auth", idToken);
+    const freshToken = await getFreshIdToken();
+    url.searchParams.set("auth", freshToken);
   }
 
   const response = await fetch(url, {
@@ -52,7 +54,9 @@ async function requestDatabase(path, method, body, idToken) {
 
   if (!response.ok) {
     throw new Error(
-      result?.error || `Database request failed (${response.status}).`
+      typeof result?.error === "string"
+        ? result.error
+        : `Database request failed (${response.status}).`,
     );
   }
 

@@ -1,4 +1,3 @@
-
 import {
   createContext,
   useCallback,
@@ -11,14 +10,23 @@ const AuthContext = createContext(null);
 
 const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
 const AUTH_URL = "https://identitytoolkit.googleapis.com/v1/accounts";
+const STORAGE_KEY = "chinmay-store-user";
 
 function readSavedUser() {
   try {
-    const savedUser = localStorage.getItem("chinmay-store-user");
+    const savedUser = localStorage.getItem(STORAGE_KEY);
     return savedUser ? JSON.parse(savedUser) : null;
   } catch {
     return null;
   }
+}
+
+function createUserSession(user, expiresIn) {
+  return {
+    ...user,
+    expiresIn,
+    tokenExpiresAt: Date.now() + Number(expiresIn) * 1000,
+  };
 }
 
 async function firebaseAuthRequest(endpoint, payload) {
@@ -26,24 +34,19 @@ async function firebaseAuthRequest(endpoint, payload) {
     throw new Error("Firebase API key is missing. Check your .env file.");
   }
 
-  const response = await fetch(
-    `${AUTH_URL}:${endpoint}?key=${API_KEY}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
-  );
+  const response = await fetch(`${AUTH_URL}:${endpoint}?key=${API_KEY}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
-  const result = await response.json().catch(() => null);
+  const result = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     const errorMessage =
       result?.error?.message || "Authentication failed.";
-
-    console.error(`Firebase ${endpoint} error:`, errorMessage);
 
     throw new Error(errorMessage);
   }
@@ -54,59 +57,68 @@ async function firebaseAuthRequest(endpoint, payload) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readSavedUser);
 
+  // Persist the current session.
   useEffect(() => {
     try {
       if (user) {
-        localStorage.setItem("chinmay-store-user", JSON.stringify(user));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
       } else {
-        localStorage.removeItem("chinmay-store-user");
+        localStorage.removeItem(STORAGE_KEY);
       }
     } catch (error) {
       console.error("Unable to save authentication state:", error);
     }
   }, [user]);
 
+  // Synchronize React state when tokenManager refreshes a token.
+  useEffect(() => {
+    const handleAuthUpdate = (event) => {
+      setUser(event.detail ?? null);
+    };
+
+    window.addEventListener("chinmay-auth-updated", handleAuthUpdate);
+
+    return () => {
+      window.removeEventListener(
+        "chinmay-auth-updated",
+        handleAuthUpdate,
+      );
+    };
+  }, []);
+
   const register = useCallback(
     async ({ email, password, displayName }) => {
-      // Step 1: Create the Firebase Authentication account.
       const data = await firebaseAuthRequest("signUp", {
         email: email.trim(),
         password,
         returnSecureToken: true,
       });
 
-      // Step 2: Update the user's display name.
-      let updatedData;
+      const updatedData = await firebaseAuthRequest("update", {
+        idToken: data.idToken,
+        displayName: displayName.trim(),
+        returnSecureToken: true,
+      });
 
-      try {
-        updatedData = await firebaseAuthRequest("update", {
-          idToken: data.idToken,
-          displayName: displayName.trim(),
-          returnSecureToken: true,
-        });
-      } catch (error) {
-        // The account may already exist even if updating its
-        // display name fails. Do not silently hide the error.
-        console.error(
-          "Account created, but display-name update failed:",
-          error.message
-        );
-        throw error;
-      }
+      const idToken = updatedData.idToken || data.idToken;
+      const refreshToken = updatedData.refreshToken || data.refreshToken;
+      const expiresIn = updatedData.expiresIn || data.expiresIn;
 
-      const newUser = {
-        uid: updatedData.localId || data.localId,
-        email: updatedData.email || data.email,
-        displayName: updatedData.displayName || displayName.trim(),
-        idToken: updatedData.idToken || data.idToken,
-        refreshToken: updatedData.refreshToken || data.refreshToken,
-        expiresIn: updatedData.expiresIn || data.expiresIn,
-      };
+      const newUser = createUserSession(
+        {
+          uid: updatedData.localId || data.localId,
+          email: updatedData.email || data.email,
+          displayName: updatedData.displayName || displayName.trim(),
+          idToken,
+          refreshToken,
+        },
+        expiresIn,
+      );
 
       setUser(newUser);
       return newUser;
     },
-    []
+    [],
   );
 
   const login = useCallback(async ({ email, password }) => {
@@ -116,14 +128,16 @@ export function AuthProvider({ children }) {
       returnSecureToken: true,
     });
 
-    const loggedInUser = {
-      uid: data.localId,
-      email: data.email,
-      displayName: data.displayName || "",
-      idToken: data.idToken,
-      refreshToken: data.refreshToken,
-      expiresIn: data.expiresIn,
-    };
+    const loggedInUser = createUserSession(
+      {
+        uid: data.localId,
+        email: data.email,
+        displayName: data.displayName || "",
+        idToken: data.idToken,
+        refreshToken: data.refreshToken,
+      },
+      data.expiresIn,
+    );
 
     setUser(loggedInUser);
     return loggedInUser;
