@@ -1,11 +1,11 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
-import { addData } from "../firebase/database";
+import { addData, readData } from "../firebase/database";
 import {
   clearCart,
   selectCartItems,
@@ -31,6 +31,66 @@ export default function Checkout() {
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("new");
+  const [addressesLoading, setAddressesLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSavedAddresses() {
+      if (!user?.uid || !user?.idToken) {
+        setAddressesLoading(false);
+        return;
+      }
+      try {
+        const data = await readData(`users/${user.uid}/addresses`, user.idToken);
+        const list = data
+          ? Object.entries(data).map(([id, address]) => ({ ...address, id }))
+          : [];
+        list.sort((a, b) => Number(Boolean(b.isDefault)) - Number(Boolean(a.isDefault)));
+        if (cancelled) return;
+        setSavedAddresses(list);
+        const preferred = list.find((address) => address.isDefault) || list[0];
+        if (preferred) {
+          setSelectedAddressId(preferred.id);
+          setForm({
+            fullName: preferred.fullName || "",
+            phone: preferred.phone || "",
+            address: preferred.address || "",
+            city: preferred.city || "",
+            state: preferred.state || "",
+            pinCode: preferred.pinCode || "",
+          });
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Unable to load saved addresses.");
+      } finally {
+        if (!cancelled) setAddressesLoading(false);
+      }
+    }
+    loadSavedAddresses();
+    return () => { cancelled = true; };
+  }, [user?.uid, user?.idToken]);
+
+  function selectSavedAddress(event) {
+    const id = event.target.value;
+    setSelectedAddressId(id);
+    if (id === "new") {
+      setForm(initialForm);
+      return;
+    }
+    const address = savedAddresses.find((item) => item.id === id);
+    if (address) {
+      setForm({
+        fullName: address.fullName || "",
+        phone: address.phone || "",
+        address: address.address || "",
+        city: address.city || "",
+        state: address.state || "",
+        pinCode: address.pinCode || "",
+      });
+    }
+  }
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -65,17 +125,39 @@ export default function Checkout() {
     setLoading(true);
 
     try {
+      const customerDetails = {
+        fullName: form.fullName.trim(),
+        email: user.email || "",
+        phone,
+        address: form.address.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        pinCode: form.pinCode.trim(),
+      };
+
+      const existingAddress = savedAddresses.find((saved) =>
+        saved.fullName?.trim().toLowerCase() === customerDetails.fullName.toLowerCase() &&
+        saved.phone === customerDetails.phone &&
+        saved.address?.trim().toLowerCase() === customerDetails.address.toLowerCase() &&
+        saved.city?.trim().toLowerCase() === customerDetails.city.toLowerCase() &&
+        saved.state?.trim().toLowerCase() === customerDetails.state.toLowerCase() &&
+        saved.pinCode === customerDetails.pinCode
+      );
+
+      if (!existingAddress) {
+        const addressRecord = {
+          ...customerDetails,
+          label: "Home",
+          isDefault: savedAddresses.length === 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        await addData(`users/${user.uid}/addresses`, addressRecord, user.idToken);
+      }
+
       const order = {
         userId: user.uid,
-        customer: {
-          fullName: form.fullName.trim(),
-          email: user.email || "",
-          phone,
-          address: form.address.trim(),
-          city: form.city.trim(),
-          state: form.state.trim(),
-          pinCode: form.pinCode.trim(),
-        },
+        customer: customerDetails,
         items: cartItems.map((item) => ({
           productId: item.id,
           name: item.name,
@@ -157,6 +239,31 @@ export default function Checkout() {
             className="space-y-5 rounded-xl border border-gray-200 p-5 sm:p-8"
           >
             <h2 className="text-xl font-semibold">Delivery address</h2>
+
+            <div>
+              <label htmlFor="savedAddress" className="mb-2 block text-sm font-medium">
+                Choose a saved address
+              </label>
+              <select
+                id="savedAddress"
+                value={selectedAddressId}
+                onChange={selectSavedAddress}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:border-[#263E32]"
+              >
+                <option value="new">Add a new address</option>
+                {savedAddresses.map((address) => (
+                  <option key={address.id} value={address.id}>
+                    {(address.label || "Address") + " — " + (address.fullName || "") + ", " + [address.city, address.pinCode].filter(Boolean).join(" ")}
+                    {address.isDefault ? " (Default)" : ""}
+                  </option>
+                ))}
+              </select>
+              {addressesLoading && <p className="mt-2 text-xs text-gray-500">Loading saved addresses...</p>}
+              <p className="mt-2 text-xs text-gray-500">
+                New delivery details are saved to your address book automatically.
+                <Link to="/addresses" className="ml-1 font-semibold text-[#263E32] underline">Manage addresses</Link>
+              </p>
+            </div>
 
             <div>
               <label htmlFor="fullName" className="mb-2 block text-sm font-medium">

@@ -53,12 +53,20 @@ export default function Header() {
         {/* Login and Cart: visible on mobile and desktop */}
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           {user ? (
-            <button
-              onClick={logout}
-              className="text-sm font-medium text-[#263E32] sm:text-base"
-            >
-              Logout
-            </button>
+            <>
+              <Link
+                to="/addresses"
+                className="hidden text-sm font-medium text-[#263E32] md:inline sm:text-base"
+              >
+                My Addresses
+              </Link>
+              <button
+                onClick={logout}
+                className="text-sm font-medium text-[#263E32] sm:text-base"
+              >
+                Logout
+              </button>
+            </>
           ) : (
             <Link
               to="/login"

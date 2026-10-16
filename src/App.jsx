@@ -14,6 +14,8 @@ import Signup from "./pages/Signup";
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrderHistory from "./pages/OrderHistory";
+import SearchResults from "./pages/SearchResults";
+import Addresses from "./pages/Addresses";
 function ComingSoon() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-16 text-center">
@@ -44,6 +46,8 @@ export default function App() {
               element={<OrderConfirmation />}
             />
             <Route path="/orders" element={<OrderHistory />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/addresses" element={<Addresses />} />
             <Route path="*" element={<ComingSoon />} />
           </Routes>
         </BrowserRouter>
